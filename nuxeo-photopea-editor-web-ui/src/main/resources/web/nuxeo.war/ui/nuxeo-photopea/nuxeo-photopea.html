@@ -1,0 +1,36 @@
+<!--
+(C) Copyright 2018 Nuxeo (http://nuxeo.com/) and others.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<link rel="import" href="photopea-editor.html">
+
+<nuxeo-slot-content name="photopea-edit" slot="DOCUMENT_ACTIONS" order="-100">
+  <template>
+    <nuxeo-filter document="[[document]]" permission="Write">
+      <template>
+        <photopea-editor document="[[document]]" icon="icons:pageview" label="label.photopea.edit"></photopea-editor>
+      </template>
+    </nuxeo-filter>
+  </template>
+</nuxeo-slot-content>
+
+<nuxeo-slot-content name="photopea-edit-blob" slot="BLOB_ACTIONS" order="52">
+  <template>
+    <nuxeo-filter document="[[document]]" permission="Write">
+      <template>
+        <photopea-editor document="[[document]]" xpath="[[xpath]]" icon="icons:pageview" label="label.photopea.edit"></photopea-editor>
+      </template>
+    </nuxeo-filter>
+  </template>
+</nuxeo-slot-content>

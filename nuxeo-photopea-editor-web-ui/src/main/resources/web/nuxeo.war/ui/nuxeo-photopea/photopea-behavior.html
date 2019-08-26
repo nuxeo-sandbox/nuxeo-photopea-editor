@@ -1,0 +1,132 @@
+<!--
+@license
+(C) Copyright Nuxeo Corp. (http://nuxeo.com/)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<script>
+  var Nuxeo = Nuxeo || {};
+  (function () {
+
+    /**
+     * @polymerBehavior Nuxeo.PhotopeaBehavior
+     */
+    Nuxeo.PhotopeaBehavior = {
+
+      properties: {
+
+        document: {
+          type: Object
+        },
+
+        iFrameSource: {
+          type: String,
+          value: 'about:blank'
+        },
+
+        blob: {
+          type: Object
+        },
+
+        mode: {
+          type: String,
+          value: 'desktop'
+        },
+
+        editMode: {
+          type: Boolean,
+          value: false,
+          computed: 'isEditMode(mode)'
+        },
+
+        xpath: {
+          type: String,
+          value: 'file:content'
+        },
+
+        editorOptions: {
+          type: Object,
+          value: {
+            "environment": {
+              "customIO": {
+                "save": "app.echoToOE(\"Save\"); app.activeDocument.saveToOE(\"psd\");"
+              },
+            }
+          }
+        },
+
+        imageTypes: {
+          type: Array,
+          readOnly: true,
+          value: [
+            "image/jpeg", "image/gif", "image/png", "image/dds",
+            "application/pdf", "image/xcf", "image/tiff",
+            "image/svg+xml", "image/svg", "image/x-icon",
+            "application/emf", "application/x-emf", "image/x-emf", "image/x-mgx-emf", "image/x-xbitmap",
+            "image/webp", "image/bmp", "image/x-windows-bmp", "image/x-portable-pixmap",
+            "image/vnd.adobe.photoshop", "application/x-photoshop", "application/photoshop", 
+            "application/psd", "image/psd", "image/xcf"
+          ]
+        }
+      },
+
+      _deepFind: function (obj, props) {
+        for (var i = 0, path = props.split('/'), len = path.length; i < len; i++) {
+          if (!obj || obj === []) {
+            break;
+          }
+          obj = obj[path[i]];
+        }
+        return obj;
+      },
+
+      isPhotopeaDocument: function (document, xpath) {
+        if (!xpath) {
+          xpath = 'file:content';
+        }
+        var blob = document && this._deepFind(document.properties, xpath);
+        if (blob) {
+          return this.isPhotopeaCompatible(blob['mime-type']);
+        }
+        return false;
+      },
+
+      isPhotopeaCompatible: function (mime) {
+        if (this.imageTypes.indexOf(mime) >= 0) {
+          return true;
+        }
+        return false;
+      },
+
+      setPhotopeaDocument: function (document) {
+        this.blob = document && this._deepFind(document.properties, this.xpath);
+        if (this.blob) {
+          return this.isPhotopeaCompatible(this.blob['mime-type']);
+        }
+        return false;
+      },
+
+      isEditMode: function () {
+        return this.mode !== 'embedded';
+      },
+
+      computeIFrameSource: function (ele) {
+        var source = "https://www.photopea.com#" + encodeURI(JSON.stringify(this.editorOptions, null, 0));
+        return source;
+      }
+
+    };
+  })();
+
+</script>

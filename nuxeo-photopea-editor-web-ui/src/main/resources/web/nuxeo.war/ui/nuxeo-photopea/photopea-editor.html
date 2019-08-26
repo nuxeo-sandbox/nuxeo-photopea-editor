@@ -1,0 +1,333 @@
+<!--
+@license
+(C) Copyright Nuxeo Corp. (http://nuxeo.com/)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<link rel="import" href="photopea-behavior.html">
+
+<!--
+A button element for editing a document in Photopea
+
+Example:
+
+    <photopea-editor document="[[document]]"></photopea-editor>
+
+@group Nuxeo UI
+@element photopea-editor
+-->
+<dom-module id="photopea-editor"> <template>
+    <style>
+      :host {
+        display: inline-block;
+      }
+
+      #close-icon {
+        position: absolute;
+        right: -12px;
+        top: -12px;
+        width: 25px;
+        height: 25px;
+        border: 1px solid rgba(0, 0, 0, 0.4);
+        padding: 3px;
+        background: var(--paper-input-container-invalid-color);
+        color: var(--nuxeo-button-primary-text);
+      }
+
+      #close-icon:hover {
+        border-color: var(--nuxeo-primary-color);
+      }
+
+      #open-in-new {
+        position: absolute;
+        right: 12px;
+        top: -12px;
+        width: 25px;
+        height: 25px;
+        border: 1px solid rgba(0, 0, 0, 0.4);
+        padding: 3px;
+        background: var(--nuxeo-secondary-color);
+        color: var(--nuxeo-button-primary-text);
+      }
+
+      #open-in-new:hover {
+        border-color: var(--nuxeo-primary-color);
+      }
+
+      nuxeo-dialog {
+        width: 100%;
+        height: 100%;
+        min-width: 480px;
+      }
+
+      nuxeo-dialog>iframe {
+        height: 100%;
+        width: 100%;
+      }
+
+      nuxeo-dialog>* {
+        margin: 0;
+        padding: 0;
+      }
+
+      iframe {
+        height: 100%;
+        min-height: 60vh;
+        width: 100%;
+        border: none;
+        padding: 0;
+        margin: 0;
+      }
+    </style>
+
+    <nuxeo-connection id="nx"></nuxeo-connection>
+    <nuxeo-document id="doc" doc-id="[[document.uid]]"></nuxeo-document>
+
+    <template is="dom-if" if="[[_isAvailable(document)]]">
+      <div class="action" on-click="_openEditor">
+        <paper-icon-button icon="[[icon]]" noink></paper-icon-button>
+        <span class="label" hidden$="[[!showLabel]]">[[i18n(label)]]</span>
+      </div>
+      <paper-tooltip>[[i18n(label)]]</paper-tooltip>
+
+      <nuxeo-dialog on-iron-overlay-closed="_editorClosed" id="dialog" with-backdrop>
+        <iframe id="photopea" src="[[iFrameSource]]" on-message="[[_editorMessage()]]"></iframe>
+        <paper-icon-button id="open-in-new" icon="icons:open-in-new" on-click="_openInNew" noink></paper-icon-button>
+        <paper-icon-button id="close-icon" icon="nuxeo:clear" on-click="_toggleDialog" noink></paper-icon-button>
+      </nuxeo-dialog>
+    </template>
+  </template>
+  <script>
+    Polymer({
+      is: 'photopea-editor',
+      behaviors: [Nuxeo.I18nBehavior, Nuxeo.FiltersBehavior, Nuxeo.PhotopeaBehavior, Nuxeo.UploaderBehavior, Nuxeo.FormatBehavior],
+      properties: {
+
+        label: {
+          type: String,
+          value: 'Edit in Photopea'
+        },
+
+        showLabel: {
+          type: Boolean,
+          value: false
+        },
+
+        editor: {
+          type: Object,
+          observer: '_editorUpdated'
+        },
+
+        editorState: {
+          type: String,
+          value: 'Init'
+        },
+
+        icon: {
+          type: String,
+          value: 'icons:group-work'
+        },
+
+        /**
+         * A string containing an xpath expression, connected by dot (.) characters instead of slashes (/).
+         */
+        _parsedXpath: {
+          type: String,
+          computed: '_computeParsedXpath(xpath)',
+        },
+      },
+
+      listeners: {
+        batchFinished: 'importBatch'
+      },
+
+      attached() {
+        this.connection = this.$.nx;
+      },
+
+      detached() {
+        this.connection = null;
+      },
+
+      _computeParsedXpath(xpath) {
+        return this.formatPropertyXpath(xpath);
+      },
+
+      _isAvailable: function (document) {
+        return this.setPhotopeaDocument(document);
+      },
+
+      _openEditor: function () {
+        if (this.blob) {
+          this.iFrameSource = this.computeIFrameSource();
+          this.$$('#dialog').toggle();
+          this.editor = this.$$("#photopea");
+          this.editWindow = this.editor.contentWindow;
+        } else {
+          this.fire('notify', {
+            message: "No editable file found"
+          })
+        }
+      },
+
+      _editorUpdated: function () {
+        if (this.editor) {
+          this.connectedCallback();
+          this._editorCallback = this._editorMessage.bind(this);
+          window.addEventListener('message', this._editorCallback);
+        } else {
+          this.disconnectedCallback();
+          window.removeEventListener('message', this._editorCallback);
+          this.editor = null;
+          this.editWindow = null;
+          this.editorState = "Init";
+        }
+      },
+
+      _editorMessage: function (e) {
+        if (this.editor && e.origin == "https://www.photopea.com") {
+          if (this.editorState == "Init") {
+            if (e.data == "done") {
+              this.editorState = "Ready";
+            }
+          }
+          if (this.editorState == "Ready") {
+            var loaded = function (req) {
+              var ab = req.target.response;
+              this.editor.contentWindow.postMessage(ab, e.origin);
+              this.editorState = "Loaded";
+            }.bind(this);
+            var request = new XMLHttpRequest();
+            request.open("GET", this.document.properties['file:content'].data, true);
+            request.responseType = "arraybuffer";
+            request.onload = loaded;
+            request.send();
+            this.editorState = "Loading";
+          } else if (this.editorState == "Loaded") {
+            if (e.data == "Save") {
+              this.editorState = "Saving";
+            }
+          } else if (this.editorState == "Saving") {
+            if (typeof e.data != "string") {
+              // Save back to server...
+              var view = new Blob([new Uint8Array(e.data)], {
+                'type': this.document.properties['file:content']['mime-type']
+              });
+              var fileView = new File([view], this.document.properties['file:content']['name']);
+              this.uploadFiles([fileView]);
+            } else {
+              console.log("Invalid save datatype received");
+            }
+            this.editorState = "Ready";
+          }
+        }
+      },
+
+      importBatch: function (data) {
+        data.stopPropagation();
+        if (this.blobList) {
+          if (!this.get(`document.properties.${this._parsedXpath}`)) {
+            this.set(`document.properties.${this._parsedXpath}`, []);
+          }
+          this.files.forEach((file, index) => {
+            const uploadedFile = {
+              'upload-batch': data.detail.batchId,
+              'upload-fileId': index.toString(),
+            };
+            this.push(
+              `document.properties.${this._parsedXpath}`,
+              // Handle special case when using files:files
+              this.xpath === 'files:files' ? { file: uploadedFile } : uploadedFile,
+            );
+          });
+        } else {
+          this.set(`document.properties.${this._parsedXpath}`, {
+            'upload-batch': data.detail.batchId,
+            'upload-fileId': '0',
+          });
+        }
+        this._handleBlobUploaded();
+      },
+
+      _handleBlobUploaded: function () {
+        const props = {};
+        this._createNestedObjectRecursive(
+          props,
+          this._parsedXpath.split('.'),
+          this.get(`document.properties.${this._parsedXpath}`),
+        );
+        this.$.doc.data = {
+          'entity-type': 'document',
+          repository: this.document.repository,
+          uid: this.document.uid,
+          properties: props,
+        };
+        this.$.doc.put().then((response) => {
+          this.document = response;
+          this.fire('notify', { message: this.i18n(this.uploadedMessage) });
+          this.fire('document-updated');
+        });
+      },
+
+      /**
+       * Recursive method to create nested objects when they don't exist in a parent object.
+       * It does not change any other existing objects or inner objects, only the ones referred in 'path'.
+       * @param obj Parent Object where inner nested objects should be created.
+       * @param path Array containing the inner object keys.
+       * @param value Object that should be set to last nested object.
+       * Usage Example:
+       *
+       *  - Creating document properties using xpath:
+       *
+       *    const xpath = 'my:custom/field/subfield/x'
+       *    _createNestedObjectRecursive(this.document.properties, xpath.split('/'), 'should set this value');
+       *
+       */
+      _createNestedObjectRecursive(obj, path, value) {
+        if (path.length === 0) {
+          return;
+        }
+        if ((!Object.prototype.hasOwnProperty.call(obj, path[0]) && !obj[path[0]]) || typeof obj[path[0]] !== 'object') {
+          obj[path[0]] = path.length === 1 && value ? value : {};
+        }
+        return this._createNestedObjectRecursive(obj[path[0]], path.slice(1), value);
+      },
+
+      _editorClosed: function () {
+        this.iFrameSource = "about:blank";
+        this.editor = null;
+        this._refresh();
+        if (this.editMode) {
+          this.async(this._refresh, 10500);
+        }
+      },
+
+      _refresh: function () {
+        this.fire('document-updated');
+      },
+
+      _toggleDialog: function () {
+        this.$$('#dialog').toggle();
+      },
+
+      _openInNew: function () {
+        this._toggleDialog();
+        this.iFrameSource = "about:blank";
+        window.open(this.computeIFrameSource(), '_blank');
+      }
+
+    });
+
+  </script>
+</dom-module>
