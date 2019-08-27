@@ -10,8 +10,7 @@
   <groupId>org.nuxeo.viewer.photopea</groupId>
   <artifactId>nuxeo-photopea-editor-parent</artifactId>
   <version>10.10-SNAPSHOT</version>
-  <name>Nuxeo photopea editor parent</name>
-  <description>Nuxeo Photopea Viewer/Editor</description>
+  <name>Nuxeo Photopea Editor</name>
   <packaging>pom</packaging>
 
   <modules>

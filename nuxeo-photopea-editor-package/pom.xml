@@ -10,7 +10,7 @@
   <artifactId>nuxeo-photopea-editor-package</artifactId>
   <version>10.10-SNAPSHOT</version>
   <packaging>zip</packaging>
-  <name>Nuxeo photopea editor package - Nuxeo photopea editor</name>
+  <name>Nuxeo Photopea :: Package</name>
 
   <dependencies>
     <!-- Base distribution(s) for the MP -->

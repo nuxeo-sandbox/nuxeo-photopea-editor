@@ -39,46 +39,47 @@ limitations under the License.
           type: Object
         },
 
-        mode: {
-          type: String,
-          value: 'desktop'
-        },
-
-        editMode: {
-          type: Boolean,
-          value: false,
-          computed: 'isEditMode(mode)'
-        },
-
         xpath: {
           type: String,
           value: 'file:content'
         },
 
-        editorOptions: {
-          type: Object,
-          value: {
-            "environment": {
-              "customIO": {
-                "save": "app.echoToOE(\"Save\"); app.activeDocument.saveToOE(\"psd\");"
-              },
-            }
-          }
+        /**
+         * A string containing an xpath expression, connected by dot (.) characters instead of slashes (/).
+         */
+        _parsedXpath: {
+          type: String,
+          computed: '_computeParsedXpath(xpath)',
+        },
+
+        photopeaType: {
+          type: String
         },
 
         imageTypes: {
-          type: Array,
+          type: Object,
           readOnly: true,
-          value: [
-            "image/jpeg", "image/gif", "image/png", "image/dds",
-            "application/pdf", "image/xcf", "image/tiff",
-            "image/svg+xml", "image/svg", "image/x-icon",
-            "application/emf", "application/x-emf", "image/x-emf", "image/x-mgx-emf", "image/x-xbitmap",
-            "image/webp", "image/bmp", "image/x-windows-bmp", "image/x-portable-pixmap",
-            "image/vnd.adobe.photoshop", "application/x-photoshop", "application/photoshop", 
-            "application/psd", "image/psd", "image/xcf"
-          ]
+          value: {
+            "bmp": ["image/bmp", "image/x-xbitmap", "image/x-windows-bmp", "image/x-portable-pixmap"],
+            "dds": ["image/dds"],
+            "emf": ["application/emf", "application/x-emf", "image/x-emf", "image/x-mgx-emf"],
+            "gif": ["image/gif"],
+            "ico": ["image/x-icon"],
+            "jpg": ["image/jpeg"],
+            "pdf": ["application/pdf"],
+            "png": ["image/png"],
+            "psd": ["image/vnd.adobe.photoshop", "application/x-photoshop", "application/photoshop",
+              "application/psd", "image/psd"],
+            "svg": ["image/svg+xml", "image/svg"],
+            "tif": ["image/tiff"],
+            "xcf": ["image/xcf"],
+            "webp": ["image/webp"]
+          }
         }
+      },
+
+      _computeParsedXpath(xpath) {
+        return this.formatPropertyXpath(xpath);
       },
 
       _deepFind: function (obj, props) {
@@ -89,6 +90,30 @@ limitations under the License.
           obj = obj[path[i]];
         }
         return obj;
+      },
+
+      /**
+       * Recursive method to create nested objects when they don't exist in a parent object.
+       * It does not change any other existing objects or inner objects, only the ones referred in 'path'.
+       * @param obj Parent Object where inner nested objects should be created.
+       * @param path Array containing the inner object keys.
+       * @param value Object that should be set to last nested object.
+       * Usage Example:
+       *
+       *  - Creating document properties using xpath:
+       *
+       *    const xpath = 'my:custom/field/subfield/x'
+       *    _createNestedObjectRecursive(this.document.properties, xpath.split('/'), 'should set this value');
+       *
+       */
+      _createNestedObjectRecursive(obj, path, value) {
+        if (path.length === 0) {
+          return;
+        }
+        if ((!Object.prototype.hasOwnProperty.call(obj, path[0]) && !obj[path[0]]) || typeof obj[path[0]] !== 'object') {
+          obj[path[0]] = path.length === 1 && value ? value : {};
+        }
+        return this._createNestedObjectRecursive(obj[path[0]], path.slice(1), value);
       },
 
       isPhotopeaDocument: function (document, xpath) {
@@ -103,8 +128,12 @@ limitations under the License.
       },
 
       isPhotopeaCompatible: function (mime) {
-        if (this.imageTypes.indexOf(mime) >= 0) {
-          return true;
+        for (var [key, value] of Object.entries(this.imageTypes)) {
+          var pos = value.indexOf(mime);
+          if (pos >= 0) {
+            this.photopeaType = key;
+            return true;
+          }
         }
         return false;
       },
@@ -117,12 +146,19 @@ limitations under the License.
         return false;
       },
 
-      isEditMode: function () {
-        return this.mode !== 'embedded';
+      _computeEditorProperties: function (blob) {
+        return {
+          "environment": {
+            "customIO": {
+              "save": `app.echoToOE(\"Save\"); app.activeDocument.saveToOE(\"${this.photopeaType}\");`
+            },
+          }
+        };
       },
 
-      computeIFrameSource: function (ele) {
-        var source = "https://www.photopea.com#" + encodeURI(JSON.stringify(this.editorOptions, null, 0));
+      computeIFrameSource: function (blob) {
+        var env = this._computeEditorProperties(blob);
+        var source = "https://www.photopea.com#" + encodeURI(JSON.stringify(env, null, 0));
         return source;
       }
 

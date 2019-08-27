@@ -103,7 +103,9 @@ Example:
 
       <nuxeo-dialog on-iron-overlay-closed="_editorClosed" id="dialog" with-backdrop>
         <iframe id="photopea" src="[[iFrameSource]]" on-message="[[_editorMessage()]]"></iframe>
+        <!--
         <paper-icon-button id="open-in-new" icon="icons:open-in-new" on-click="_openInNew" noink></paper-icon-button>
+        -->
         <paper-icon-button id="close-icon" icon="nuxeo:clear" on-click="_toggleDialog" noink></paper-icon-button>
       </nuxeo-dialog>
     </template>
@@ -137,15 +139,7 @@ Example:
         icon: {
           type: String,
           value: 'icons:group-work'
-        },
-
-        /**
-         * A string containing an xpath expression, connected by dot (.) characters instead of slashes (/).
-         */
-        _parsedXpath: {
-          type: String,
-          computed: '_computeParsedXpath(xpath)',
-        },
+        }
       },
 
       listeners: {
@@ -160,20 +154,15 @@ Example:
         this.connection = null;
       },
 
-      _computeParsedXpath(xpath) {
-        return this.formatPropertyXpath(xpath);
-      },
-
       _isAvailable: function (document) {
         return this.setPhotopeaDocument(document);
       },
 
       _openEditor: function () {
         if (this.blob) {
-          this.iFrameSource = this.computeIFrameSource();
+          this.iFrameSource = this.computeIFrameSource(this.blob);
           this.$$('#dialog').toggle();
           this.editor = this.$$("#photopea");
-          this.editWindow = this.editor.contentWindow;
         } else {
           this.fire('notify', {
             message: "No editable file found"
@@ -189,14 +178,15 @@ Example:
         } else {
           this.disconnectedCallback();
           window.removeEventListener('message', this._editorCallback);
-          this.editor = null;
-          this.editWindow = null;
           this.editorState = "Init";
         }
       },
 
       _editorMessage: function (e) {
-        if (this.editor && e.origin == "https://www.photopea.com") {
+        if (!e || e.origin !== "https://www.photopea.com") {
+          return;
+        }
+        if (this.editor) {
           if (this.editorState == "Init") {
             if (e.data == "done") {
               this.editorState = "Ready";
@@ -209,7 +199,7 @@ Example:
               this.editorState = "Loaded";
             }.bind(this);
             var request = new XMLHttpRequest();
-            request.open("GET", this.document.properties['file:content'].data, true);
+            request.open("GET", this.get(`document.properties.${this._parsedXpath}.data`), true);
             request.responseType = "arraybuffer";
             request.onload = loaded;
             request.send();
@@ -222,14 +212,21 @@ Example:
             if (typeof e.data != "string") {
               // Save back to server...
               var view = new Blob([new Uint8Array(e.data)], {
-                'type': this.document.properties['file:content']['mime-type']
+                'type': this.get(`document.properties.${this._parsedXpath}.mime-type`)
               });
-              var fileView = new File([view], this.document.properties['file:content']['name']);
+              var fileView = new File([view], this.get(`document.properties.${this._parsedXpath}.name`));
               this.uploadFiles([fileView]);
+            } else if (typeof e.data == "string") {
+              if (e.data == "done") {
+                this.editorState = "Ready";
+              } else if (e.data == "Save") {
+                this.editorState = "Saving";
+              }
             } else {
               console.log("Invalid save datatype received");
+              console.log(e);
+              this.editorState = "Ready";
             }
-            this.editorState = "Ready";
           }
         }
       },
@@ -280,37 +277,10 @@ Example:
         });
       },
 
-      /**
-       * Recursive method to create nested objects when they don't exist in a parent object.
-       * It does not change any other existing objects or inner objects, only the ones referred in 'path'.
-       * @param obj Parent Object where inner nested objects should be created.
-       * @param path Array containing the inner object keys.
-       * @param value Object that should be set to last nested object.
-       * Usage Example:
-       *
-       *  - Creating document properties using xpath:
-       *
-       *    const xpath = 'my:custom/field/subfield/x'
-       *    _createNestedObjectRecursive(this.document.properties, xpath.split('/'), 'should set this value');
-       *
-       */
-      _createNestedObjectRecursive(obj, path, value) {
-        if (path.length === 0) {
-          return;
-        }
-        if ((!Object.prototype.hasOwnProperty.call(obj, path[0]) && !obj[path[0]]) || typeof obj[path[0]] !== 'object') {
-          obj[path[0]] = path.length === 1 && value ? value : {};
-        }
-        return this._createNestedObjectRecursive(obj[path[0]], path.slice(1), value);
-      },
-
       _editorClosed: function () {
         this.iFrameSource = "about:blank";
         this.editor = null;
         this._refresh();
-        if (this.editMode) {
-          this.async(this._refresh, 10500);
-        }
       },
 
       _refresh: function () {
@@ -319,12 +289,6 @@ Example:
 
       _toggleDialog: function () {
         this.$$('#dialog').toggle();
-      },
-
-      _openInNew: function () {
-        this._toggleDialog();
-        this.iFrameSource = "about:blank";
-        window.open(this.computeIFrameSource(), '_blank');
       }
 
     });

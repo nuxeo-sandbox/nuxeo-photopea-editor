@@ -18,6 +18,8 @@ limitations under the License.
 <link rel="import" href="photopea-behavior.html">
 
 <!--
+XXXX: NOT CURRENTLY USEABLE
+
 An element for viewing a document (inline) in Photopea
 
 Example:
@@ -66,9 +68,7 @@ Example:
 
       _computeIFrameSource: function () {
         var url = this.computeIFrameSource();
-        console.log(url)
         this.proxy = this.$$('#photopea');
-        console.log(this.proxy);
         return url;
       },
 
