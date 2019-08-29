@@ -60,16 +60,16 @@ limitations under the License.
           type: Object,
           readOnly: true,
           value: {
-            "bmp": ["image/bmp", "image/x-xbitmap", "image/x-windows-bmp", "image/x-portable-pixmap"],
+            "bmp": ["image/bmp", "image/x-bitmap", "image/x-windows-bmp", "image/x-portable-pixmap"],
             "dds": ["image/dds"],
             "emf": ["application/emf", "application/x-emf", "image/x-emf", "image/x-mgx-emf"],
             "gif": ["image/gif"],
             "ico": ["image/x-icon", "image/vnd.microsoft.icon"],
-            "jpg": ["image/jpeg"],
+            "jpg": ["image/jpeg", "image/pjpeg"],
             "pdf": ["application/pdf"],
             "png": ["image/png"],
             "psd": ["image/vnd.adobe.photoshop", "application/x-photoshop", "application/photoshop",
-              "application/psd", "image/psd"],
+              "application/psd", "image/psd", "image/x-psd", "image/photoshop", "image/x-photoshop"],
             "svg": ["image/svg+xml", "image/svg"],
             "tif": ["image/tiff"],
             "xcf": ["image/xcf", "image/x-xcf"],
@@ -129,10 +129,11 @@ limitations under the License.
 
       isPhotopeaCompatible: function (mime) {
         for (var [key, value] of Object.entries(this.imageTypes)) {
-          var pos = value.indexOf(mime);
-          if (pos >= 0) {
-            this.photopeaType = key;
-            return true;
+          for (var mt of value) {
+            if (mime.startsWith(mt)) {
+              this.photopeaType = key;
+              return true;
+            }
           }
         }
         return false;
@@ -147,13 +148,16 @@ limitations under the License.
       },
 
       _computeEditorProperties: function (blob) {
-        return {
+        console.log(blob);
+        var env = {
           "environment": {
             "customIO": {
-              "save": `app.echoToOE(\"Save\"); app.activeDocument.saveToOE(\"${this.photopeaType}\");`
+              "save": `alert('Saving: ${blob.name}');app.echoToOE('Save');app.activeDocument.saveToOE('${this.photopeaType}');alert('Done');`
             },
           }
         };
+        console.log(env);
+        return env;
       },
 
       computeIFrameSource: function (blob) {

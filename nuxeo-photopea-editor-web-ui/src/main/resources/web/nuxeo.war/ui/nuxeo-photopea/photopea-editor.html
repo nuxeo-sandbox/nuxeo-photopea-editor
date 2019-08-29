@@ -195,6 +195,7 @@ Example:
           if (this.editorState == "Ready") {
             var loaded = function (req) {
               var ab = req.target.response;
+              console.log("Posting content...");
               this.editor.contentWindow.postMessage(ab, e.origin);
               this.editorState = "Loaded";
             }.bind(this);
@@ -205,6 +206,11 @@ Example:
             request.send();
             this.editorState = "Loading";
           } else if (this.editorState == "Loaded") {
+            var blobName = this.get(`document.properties.${this._parsedXpath}.name`);
+            console.log(`Setting name: ${blobName}`);
+            this.editor.contentWindow.postMessage(`app.activeDocument.name='${blobName}';`, e.origin);
+            this.editorState = "Editing";
+          } else if (this.editorState == "Editing") {
             if (e.data == "Save") {
               this.editorState = "Saving";
             }

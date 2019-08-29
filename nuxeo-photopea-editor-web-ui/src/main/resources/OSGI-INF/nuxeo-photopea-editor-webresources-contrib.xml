@@ -15,4 +15,44 @@
       </resources>
     </bundle>
   </extension>
+
+  <extension target="org.nuxeo.ecm.platform.mimetype.service.MimetypeRegistryService" point="mimetype">
+    <mimetype normalized="image/dds" binary="true" iconPath="image.gif">
+      <mimetypes>
+        <mimetype>image/dds</mimetype>
+      </mimetypes>
+      <extensions>
+        <extension>dds</extension>
+      </extensions>
+    </mimetype>
+    <mimetype normalized="application/emf" binary="true" iconPath="image.gif">
+      <mimetypes>
+        <mimetype>application/emf</mimetype>
+        <mimetype>application/x-emf</mimetype>
+        <mimetype>image/x-emf</mimetype>
+        <mimetype>image/x-mgx-emf</mimetype>
+      </mimetypes>
+      <extensions>
+        <extension>emf</extension>
+      </extensions>
+    </mimetype>
+    <mimetype normalized="image/x-icon" binary="true" iconPath="image.gif">
+      <mimetypes>
+        <mimetype>image/x-icon</mimetype>
+        <mimetype>image/vnd.microsoft.icon</mimetype>
+      </mimetypes>
+      <extensions>
+        <extension>ico</extension>
+      </extensions>
+    </mimetype>
+    <mimetype normalized="image/xcf" binary="true" iconPath="image.gif">
+      <mimetypes>
+        <mimetype>image/xcf</mimetype>
+        <mimetype>image/x-xcf</mimetype>
+      </mimetypes>
+      <extensions>
+        <extension>xcf</extension>
+      </extensions>
+    </mimetype>
+  </extension>
 </component>
