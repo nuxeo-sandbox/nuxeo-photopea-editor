@@ -65,18 +65,18 @@ Example:
         border-color: var(--nuxeo-primary-color);
       }
 
-      nuxeo-dialog {
+      .edit-dialog {
         width: 100%;
         height: 100%;
         min-width: 480px;
       }
 
-      nuxeo-dialog>iframe {
+      .edit-dialog>iframe {
         height: 100%;
         width: 100%;
       }
 
-      nuxeo-dialog>* {
+      .edit-dialog>* {
         margin: 0;
         padding: 0;
       }
@@ -93,6 +93,9 @@ Example:
 
     <nuxeo-connection id="nx"></nuxeo-connection>
     <nuxeo-document id="doc" doc-id="[[document.uid]]"></nuxeo-document>
+    <nuxeo-document id="open" doc-id="[[openDoc]]"></nuxeo-document>
+    <nuxeo-document id="docRequest" doc-path="{{saveAsPath}}" data="{{saveAsDocument}}" sync-indexing
+      enrichers="permissions, subtypes"></nuxeo-document>
 
     <template is="dom-if" if="[[_isAvailable(document)]]">
       <div class="action" on-click="_openEditor">
@@ -101,12 +104,73 @@ Example:
       </div>
       <paper-tooltip>[[i18n(label)]]</paper-tooltip>
 
-      <nuxeo-dialog on-iron-overlay-closed="_editorClosed" id="dialog" with-backdrop>
+      <nuxeo-dialog on-iron-overlay-closed="_editorClosed" id="dialog" with-backdrop class="edit-dialog">
         <iframe id="photopea" src="[[iFrameSource]]" on-message="[[_editorMessage()]]"></iframe>
-        <!--
-        <paper-icon-button id="open-in-new" icon="icons:open-in-new" on-click="_openInNew" noink></paper-icon-button>
-        -->
         <paper-icon-button id="close-icon" icon="nuxeo:clear" on-click="_toggleDialog" noink></paper-icon-button>
+      </nuxeo-dialog>
+
+      <nuxeo-dialog reparent id="openDialog" with-backdrop no-auto-focus>
+        <div class="title">
+          <h2>[[i18n('label.photopea.open.title')]]</h2>
+        </div>
+
+        <div class="input">
+          <nuxeo-document-suggestion label="[[i18n('defaultSearch.path')]]" value="{{openDoc}}">
+          </nuxeo-document-suggestion>
+        </div>
+        <div class="buttons">
+          <paper-button dialog-dismiss>[[i18n('command.cancel')]]</paper-button>
+          <paper-button class="primary" dialog-confirm on-click="_openDoc">[[i18n('label.photopea.open.title')]]
+          </paper-button>
+        </div>
+      </nuxeo-dialog>
+
+      <nuxeo-dialog reparent id="saveAsDialog" with-backdrop no-auto-focus>
+        <div class="title">
+          <h2>[[i18n('label.photopea.saveas.title')]]</h2>
+        </div>
+
+        <nuxeo-input role="widget" value="{{saveAsName}}" label="File Name" type="text">
+        </nuxeo-input>
+
+        <nuxeo-directory-suggestion value="{{saveAsFormat}}" label="Format" directory-name="PhotopeaFormat"
+          role="widget" min-chars="0"></nuxeo-directory-suggestion>
+
+        <div class="input">
+          <paper-tabs selected="{{saveAsTab}}">
+            <paper-tab>Version</paper-tab>
+            <!--
+            <paper-tab>Document</paper-tab>
+            <paper-tab>Attachment</paper-tab>
+            -->
+          </paper-tabs>
+
+          <iron-pages selected="{{saveAsTab}}">
+            <div class="input">
+              <paper-radio-group aria-labelledby="verlbl" selected="{{saveAsVersion}}">
+                <paper-radio-button name="MINOR">Minor</paper-radio-button>
+                <paper-radio-button name="MAJOR">Major</paper-radio-button>
+                <paper-radio-button name="NONE">None</paper-radio-button>
+              </paper-radio-group>
+            </div>
+            <!--
+            <div class="input">
+              <nuxeo-path-suggestion label="[[i18n('defaultSearch.path')]]" value="{{saveAsPath}}">
+              </nuxeo-path-suggestion>
+            </div>
+            <div class="input">
+              <p>
+                <i class="label">Image will be saved as an attachment.</i>
+              </p>
+            </div>
+            -->
+          </iron-pages>
+        </div>
+        <div class="buttons">
+          <paper-button dialog-dismiss>[[i18n('command.cancel')]]</paper-button>
+          <paper-button class="primary" dialog-confirm on-click="_saveAsDoc">[[i18n('label.photopea.save.title')]]
+          </paper-button>
+        </div>
       </nuxeo-dialog>
     </template>
   </template>
@@ -131,14 +195,60 @@ Example:
           observer: '_editorUpdated'
         },
 
+        postQueue: {
+          type: Array,
+          value: []
+        },
+
+        origin: {
+          type: String,
+          value: 'https://www.photopea.com'
+        },
+
         editorState: {
           type: String,
           value: 'Init'
         },
 
+        openDoc: {
+          type: Object
+        },
+
         icon: {
           type: String,
           value: 'icons:group-work'
+        },
+
+        saveDoc: {
+          type: String
+        },
+
+        saveAsTab: {
+          type: String,
+          value: '0'
+        },
+
+        saveAsFormat: {
+          type: String,
+          observer: '_formatChanged'
+        },
+
+        saveAsName: {
+          type: String
+        },
+
+        saveAsDocument: {
+          type: Object,
+          value: {}
+        },
+
+        saveAsVersion: {
+          type: String,
+          value: 'MINOR'
+        },
+
+        saveAsPath: {
+          type: String
         }
       },
 
@@ -155,7 +265,13 @@ Example:
       },
 
       _isAvailable: function (document) {
-        return this.setPhotopeaDocument(document);
+        if (this.setPhotopeaDocument(document)) {
+          // Set helper data
+          this.set('saveAsPath', document.path.substr(0, document.path.lastIndexOf('/')));
+          this.set('saveAsFormat', this.photopeaType);
+          return true;
+        }
+        return false;
       },
 
       _openEditor: function () {
@@ -182,10 +298,19 @@ Example:
         }
       },
 
+      _triggerEditorQueue: function () {
+        if (this.postQueue.length > 0) {
+          var msg = this.postQueue.shift();
+          console.log("POST: " + msg);
+          this.editor.contentWindow.postMessage(msg, this.origin);
+        }
+      },
+
       _editorMessage: function (e) {
         if (!e || e.origin !== "https://www.photopea.com") {
           return;
         }
+        console.log(e);
         if (this.editor) {
           if (this.editorState == "Init") {
             if (e.data == "done") {
@@ -195,9 +320,10 @@ Example:
           if (this.editorState == "Ready") {
             var loaded = function (req) {
               var ab = req.target.response;
-              console.log("Posting content...");
-              this.editor.contentWindow.postMessage(ab, e.origin);
-              this.editorState = "Loaded";
+              this.editor.contentWindow.postMessage(ab, this.origin);
+              this.saveAsName = this.get(`document.properties.${this._parsedXpath}.name`);
+              this.postQueue.push(`app.activeDocument.name='${this.saveAsName}';app.activeDocument.source='${this.document.uid},${this._parsedXpath}';`);
+              this.editorState = "Editing";
             }.bind(this);
             var request = new XMLHttpRequest();
             request.open("GET", this.get(`document.properties.${this._parsedXpath}.data`), true);
@@ -205,16 +331,32 @@ Example:
             request.onload = loaded;
             request.send();
             this.editorState = "Loading";
-          } else if (this.editorState == "Loaded") {
-            var blobName = this.get(`document.properties.${this._parsedXpath}.name`);
-            console.log(`Setting name: ${blobName}`);
-            this.editor.contentWindow.postMessage(`app.activeDocument.name='${blobName}';`, e.origin);
-            this.editorState = "Editing";
           } else if (this.editorState == "Editing") {
-            if (e.data == "Save") {
-              this.editorState = "Saving";
+            if (typeof e.data == "string") {
+              if (e.data == "done") {
+                // check queue
+                this._triggerEditorQueue();
+              } else if (e.data.startsWith("Save:") || e.data.startsWith("SaveAs:")) {
+                this.saveDoc = e.data.substr(e.data.indexOf(":") + 1, e.data.length);
+                console.log("Save doc: " + this.saveDoc);
+                if (e.data.startsWith("SaveAs:")) {
+                  this.$$("#saveAsDialog").toggle();
+                } else {
+                  this.editorState = "Saving";
+                }
+              } else if (e.data == "Publish") {
+                this.editorState = "SavingPublish";
+              } else if (e.data == "Open") {
+                this.$$("#openDialog").toggle();
+              } else {
+                console.log("Unknown directive received");
+                console.log(e);
+              }
+            } else {
+              console.log("Unknown operation received");
+              console.log(e);
             }
-          } else if (this.editorState == "Saving") {
+          } else if (this.editorState.startsWith("Saving")) {
             if (typeof e.data != "string") {
               // Save back to server...
               var view = new Blob([new Uint8Array(e.data)], {
@@ -224,14 +366,38 @@ Example:
               this.uploadFiles([fileView]);
             } else if (typeof e.data == "string") {
               if (e.data == "done") {
-                this.editorState = "Ready";
+                this.editorState = "Editing";
               } else if (e.data == "Save") {
                 this.editorState = "Saving";
               }
             } else {
-              console.log("Invalid save datatype received");
+              console.log("Invalid operation received");
               console.log(e);
-              this.editorState = "Ready";
+              this.editorState = "Editing";
+            }
+          } else if (this.editorState == "HandleSaveAs") {
+            if (typeof e.data != "string") {
+              // Save back to server...
+              var view = new Blob([new Uint8Array(e.data)], {
+                'type': this._mimeType(this.saveAsFormat)
+              });
+              var fileView = new File([view], this.saveAsName);
+              this.uploadFiles([fileView]);
+            } else if (typeof e.data == "string") {
+              if (e.data == "done") {
+                /*
+                this.editorState = "Editing";
+                this.saveAsTab = 0;
+                this.saveAsFormat = this.photopeaType;
+                this.saveAsVersion = 'MINOR';
+                this.saveAsPath = document.path;
+                */
+                this._triggerEditorQueue();
+              }
+            } else {
+              console.log("Invalid operation received");
+              console.log(e);
+              this.editorState = "Editing";
             }
           }
         }
@@ -239,9 +405,14 @@ Example:
 
       importBatch: function (data) {
         data.stopPropagation();
-        if (this.blobList) {
-          if (!this.get(`document.properties.${this._parsedXpath}`)) {
-            this.set(`document.properties.${this._parsedXpath}`, []);
+        var doc = this.document;
+        var xpath = this._parsedXpath;
+        if (this.editorState === "HandleSaveAs" && this.saveAsTab == 2) {
+          xpath = 'files:files';
+        }
+        if (xpath === 'files:files') {
+          if (!this.get(`document.properties.${xpath}`)) {
+            this.set(`document.properties.${xpath}`, []);
           }
           this.files.forEach((file, index) => {
             const uploadedFile = {
@@ -249,38 +420,72 @@ Example:
               'upload-fileId': index.toString(),
             };
             this.push(
-              `document.properties.${this._parsedXpath}`,
+              `document.properties.${xpath}`,
               // Handle special case when using files:files
               this.xpath === 'files:files' ? { file: uploadedFile } : uploadedFile,
             );
           });
+          console.log(this.get(`document.properties.${xpath}`));
         } else {
-          this.set(`document.properties.${this._parsedXpath}`, {
+          this.set(`document.properties.${xpath}`, {
             'upload-batch': data.detail.batchId,
             'upload-fileId': '0',
           });
         }
-        this._handleBlobUploaded();
+        this._handleBlobUploaded(doc, xpath);
       },
 
-      _handleBlobUploaded: function () {
+      _handleBlobUploaded: function (doc, xpath) {
         const props = {};
         this._createNestedObjectRecursive(
           props,
-          this._parsedXpath.split('.'),
-          this.get(`document.properties.${this._parsedXpath}`),
+          xpath.split('.'),
+          this.get(`document.properties.${xpath}`),
         );
+        if (this.saveAsTab == 0 && this.saveAsVersion !== "NONE") {
+          this.$.doc.headers = {
+            'X-Versioning-Option': this.saveAsVersion
+          };
+        }
         this.$.doc.data = {
           'entity-type': 'document',
-          repository: this.document.repository,
-          uid: this.document.uid,
+          repository: doc.repository,
+          uid: doc.uid,
           properties: props,
         };
-        this.$.doc.put().then((response) => {
-          this.document = response;
-          this.fire('notify', { message: this.i18n(this.uploadedMessage) });
-          this.fire('document-updated');
-        });
+        // SAVE AS
+        if (this.editorState === "HandleSaveAs" && this.saveAsTab == 1) {
+          // XXX properties format <?>
+          this.$.docRequest.data.name = this.saveAsName;
+          props['dc:title'] = this.saveAsName;
+          this.$.docRequest.data.properties = props;
+          //this.$.docRequest.docPath = this.saveAsPath;
+          //this.$.docRequest.docId = this.saveDoc.substr(0, this.saveDoc.indexOf(':'));
+          console.log("Creating document");
+          console.log(this.saveAsDocument);
+          console.log(this.saveAsPath);
+          console.log(this.$.docRequest.$.nxResource.path);
+          this.set('creating', true);
+          this.$.docRequest
+            .post()
+            .then((response) => {
+              this.set('creating', false);
+            })
+            .catch((err) => {
+              this.set('creating', false);
+              this.fire('notify', { message: this.i18n('documentCreationForm.createError') });
+              console.error(err);
+            });
+        } else {
+          this.$.doc.put().then((response) => {
+            doc = response;
+            this.fire('notify', { message: this.i18n(this.uploadedMessage) });
+            this.fire('document-updated');
+          });
+        }
+        if (this.editorState === "HandleSaveAs") {
+          this._saveAsDone();
+        }
       },
 
       _editorClosed: function () {
@@ -295,6 +500,54 @@ Example:
 
       _toggleDialog: function () {
         this.$$('#dialog').toggle();
+      },
+
+      _openDoc: function () {
+        var toOpen = this.$$("#open").get().then(open => {
+          var loaded = function (req) {
+            var ab = req.target.response;
+            this.postQueue.push(ab);
+            this.postQueue.push(`app.activeDocument.name='${open.properties['file:content'].name}';app.activeDocument.source='${open.uid},file:content';`);
+            this._triggerEditorQueue();
+          }.bind(this);
+          var request = new XMLHttpRequest();
+          request.open("GET", `${open.properties['file:content'].data}`, true);
+          request.responseType = "arraybuffer";
+          request.onload = loaded;
+          request.send();
+        }).bind(this);
+      },
+
+      _isVersionAvailable: function (doc) {
+        return !this.isVersion(doc) && this.hasFacet(doc, 'Versionable') && this.hasPermission(doc, 'Write');
+      },
+
+      _formatChanged: function () {
+        if (this.saveAsName) {
+          this.saveAsName = this.saveAsName.substr(0, this.saveAsName.lastIndexOf(".")) + "." + this.saveAsFormat;
+        }
+      },
+
+      _saveAsDoc: function () {
+        console.log("Performing Save As");
+        console.log(this.saveAsName + ", " + this.saveAsFormat + ", " + this.saveAsTab + ", " + this.saveAsPath + ", " + this.saveAsVersion);
+        this.editorState = "HandleSaveAs";
+        if (this.saveAsTab != 1) {
+          this.set('saveAsPath', null);
+        }
+        if (this.saveAsTab >= 1) {
+          this.saveAsVersion = null;
+        }
+        this.postQueue.push(`app.activeDocument.saveToOE('${this.saveAsFormat}');alert('Done');`);
+        this._triggerEditorQueue();
+      },
+
+      _saveAsDone: function () {
+        this.editorState = "Editing";
+        this.saveAsTab = 0;
+        this.saveAsFormat = this.photopeaType;
+        this.saveAsVersion = 'MINOR';
+        this.saveAsPath = document.path;
       }
 
     });

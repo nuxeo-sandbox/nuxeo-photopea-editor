@@ -55,4 +55,10 @@
       </extensions>
     </mimetype>
   </extension>
+
+  <extension target="org.nuxeo.ecm.directory.GenericDirectory" point="directories">
+    <directory name="PhotopeaFormat" extends="template-vocabulary">
+      <dataFile>directories/format.csv</dataFile>
+    </directory>
+  </extension>
 </component>

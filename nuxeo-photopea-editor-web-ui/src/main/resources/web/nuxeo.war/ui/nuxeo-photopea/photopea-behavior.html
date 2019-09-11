@@ -68,8 +68,8 @@ limitations under the License.
             "jpg": ["image/jpeg", "image/pjpeg"],
             "pdf": ["application/pdf"],
             "png": ["image/png"],
-            "psd": ["image/vnd.adobe.photoshop", "application/x-photoshop", "application/photoshop",
-              "application/psd", "image/psd", "image/x-psd", "image/photoshop", "image/x-photoshop"],
+            "psd": ["image/psd", "image/vnd.adobe.photoshop", "application/x-photoshop", "application/photoshop",
+              "application/psd", "image/x-psd", "image/photoshop", "image/x-photoshop"],
             "svg": ["image/svg+xml", "image/svg"],
             "tif": ["image/tiff"],
             "xcf": ["image/xcf", "image/x-xcf"],
@@ -148,16 +148,23 @@ limitations under the License.
       },
 
       _computeEditorProperties: function (blob) {
-        console.log(blob);
         var env = {
           "environment": {
+            "phrases": [[1, 3], "Save As"],
             "customIO": {
-              "save": `alert('Saving: ${blob.name}');app.echoToOE('Save');app.activeDocument.saveToOE('${this.photopeaType}');alert('Done');`
-            },
+              "open": `alert('Prompting open dialog');app.echoToOE('Open');`,
+              "save": `alert('Saving: ${blob.name}');app.echoToOE('Save:' + app.activeDocument.source);app.activeDocument.saveToOE('${this.photopeaType}');alert('Done');`,
+              "saveAs": `alert('Opening Save-As dialog');app.echoToOE('SaveAs:' + app.activeDocument.source)`,
+              "publish": `alert('Opening Publish dialog');app.echoToOE('Publish')`
+            }
           }
         };
         console.log(env);
         return env;
+      },
+
+      _mimeType: function(type) {
+        return this.imageTypes[type][0];
       },
 
       computeIFrameSource: function (blob) {
