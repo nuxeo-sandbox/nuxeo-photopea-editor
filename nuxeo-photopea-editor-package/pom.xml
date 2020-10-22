@@ -3,12 +3,11 @@
   <parent>
     <groupId>org.nuxeo.viewer.photopea</groupId>
     <artifactId>nuxeo-photopea-editor-parent</artifactId>
-    <version>10.10-SNAPSHOT</version>
+    <version>10.10.1</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>nuxeo-photopea-editor-package</artifactId>
-  <version>10.10-SNAPSHOT</version>
   <packaging>zip</packaging>
   <name>Nuxeo Photopea :: Package</name>
 
