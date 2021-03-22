@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.nuxeo.viewer.photopea</groupId>
     <artifactId>nuxeo-photopea-editor-parent</artifactId>
-    <version>10.10.2</version>
+    <version>11.4.0</version>
   </parent>
 
   <artifactId>nuxeo-photopea-editor-web-ui</artifactId>
