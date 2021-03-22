@@ -10,6 +10,10 @@
   <packaging>zip</packaging>
   <name>Nuxeo Photopea :: Package</name>
 
+  <properties>
+    <nuxeo.lts.version>lts-2021.*</nuxeo.lts.version>
+  </properties>
+
   <dependencies>
     <!-- Base distribution(s) for the MP -->
     <dependency>
