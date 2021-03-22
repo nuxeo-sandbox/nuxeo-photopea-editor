@@ -154,7 +154,7 @@ limitations under the License.
             "customIO": {
               "open": `alert('Prompting open dialog');app.echoToOE('Open');`,
               "save": `alert('Saving: ${blob.name}');app.echoToOE('Save:' + app.activeDocument.source);app.activeDocument.saveToOE('${this.photopeaType}');alert('Done');`,
-              "saveAs": `alert('Opening Save-As dialog');app.echoToOE('SaveAs:' + app.activeDocument.source)`,
+              "saveAsPSD": `alert('Opening Save-As dialog');app.echoToOE('SaveAs:' + app.activeDocument.source)`,
               "publish": `alert('Opening Publish dialog');app.echoToOE('Publish')`
             }
           }

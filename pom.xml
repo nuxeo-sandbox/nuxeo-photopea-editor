@@ -1,15 +1,16 @@
 <?xml version="1.0"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.nuxeo.ecm.distribution</groupId>
-    <artifactId>nuxeo-distribution</artifactId>
-    <version>10.10</version>
+    <groupId>org.nuxeo</groupId>
+    <artifactId>nuxeo-parent</artifactId>
+    <version>11.4</version>
   </parent>
 
   <groupId>org.nuxeo.viewer.photopea</groupId>
   <artifactId>nuxeo-photopea-editor-parent</artifactId>
-  <version>10.10.1</version>
+  <version>11.4.0</version>
   <name>Nuxeo Photopea Editor</name>
   <packaging>pom</packaging>
 
@@ -21,28 +22,7 @@
   <repositories>
     <repository>
       <id>public</id>
-      <url>http://maven.nuxeo.org/nexus/content/groups/public</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>public-snapshot</id>
-      <url>http://maven.nuxeo.org/nexus/content/groups/public-snapshot</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <updatePolicy>always</updatePolicy>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>nuxeo-studio</id>
-      <url>https://connect.nuxeo.com/nuxeo/site/studio/maven</url>
+      <url>https://packages.nuxeo.com/repository/maven-public/</url>
       <releases>
         <enabled>true</enabled>
       </releases>
@@ -56,8 +36,7 @@
   <pluginRepositories>
     <pluginRepository>
       <id>public</id>
-      <url>http://maven.nuxeo.org/nexus/content/groups/public</url>
-      <name>Nuxeo releases</name>
+      <url>https://packages.nuxeo.com/repository/maven-public/</url>
       <releases>
         <enabled>true</enabled>
       </releases>
@@ -66,6 +45,7 @@
       </snapshots>
     </pluginRepository>
   </pluginRepositories>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
